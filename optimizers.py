@@ -68,4 +68,36 @@ class RMSprop:
             model.weights[i] -= self.lr * grad_W[i] / np.sqrt(self.vel_W[i] + 1e-8)
             model.biases[i]  -= self.lr * grad_b[i] / np.sqrt(self.vel_b[i] + 1e-8)
 
+class Adam:
+    def __init__(self, lr=0.01, beta1=0.9, beta2=0.999):
+        self.lr = lr
+        self.beta1 = beta1
+        self.beta2 = beta2
+        self.fm_W = None
+        self.sm_W = None
+        self.fm_b = None
+        self.sm_b = None
+        self.t = 0  # timestep
+
+    def update(self, model, grad_W, grad_b):
+        if self.fm_W is None:
+            self.fm_W = [np.zeros_like(w) for w in model.weights]
+            self.sm_W = [np.zeros_like(w) for w in model.weights]
+            self.fm_b = [np.zeros_like(b) for b in model.biases]
+            self.sm_b = [np.zeros_like(b) for b in model.biases]  
+
+        self.t += 1
+        for i in range(len(model.weights)):
+            self.fm_W[i] = self.beta1 * self.fm_W[i] + (1 - self.beta1) * grad_W[i]
+            self.sm_W[i] = self.beta2 * self.sm_W[i] + (1 - self.beta2) * grad_W[i]**2
+            self.fm_b[i] = self.beta1 * self.fm_b[i] + (1 - self.beta1) * grad_b[i]
+            self.sm_b[i] = self.beta2 * self.sm_b[i] + (1 - self.beta2) * grad_b[i]**2
+
+            fm_hat_W = self.fm_W[i] / (1 - self.beta1**self.t)
+            sm_hat_W = self.sm_W[i] / (1 - self.beta2**self.t)
+            fm_hat_b = self.fm_b[i] / (1 - self.beta1**self.t)
+            sm_hat_b = self.sm_b[i] / (1 - self.beta2**self.t)
+
+            model.weights[i] -= self.lr * fm_hat_W / (np.sqrt(sm_hat_W) + 1e-8)
+            model.biases[i]  -= self.lr * fm_hat_b / (np.sqrt(sm_hat_b) + 1e-8)
 
