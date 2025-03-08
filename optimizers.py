@@ -136,3 +136,12 @@ class Nadam:
 
             model.weights[i] -= self.lr * update_W / (np.sqrt(sm_hat_W) + 1e-8)
             model.biases[i]  -= self.lr * update_b / (np.sqrt(sm_hat_b) + 1e-8)
+
+OPTIMIZERS = {
+    "sgd": SGD,
+    "momentum": Momentum,
+    "nesterov": Nesterov,
+    "rmsprop": RMSprop,
+    "adam": Adam,
+    "nadam": Nadam
+}
