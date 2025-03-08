@@ -39,18 +39,30 @@ def load_data(dataset_name):
         from keras.datasets import fashion_mnist
         (x_train, y_train), (x_test, y_test) = fashion_mnist.load_data()
 
-    x_train = x_train.reshape(x_train.shape[0], -1).T / 255.0
-    x_test = x_test.reshape(x_test.shape[0], -1).T / 255.0
+    x_train = x_train.reshape(x_train.shape[0], -1) / 255.0
+    x_test = x_test.reshape(x_test.shape[0], -1) / 255.0
     num_classes = 10
 
-    y_train_oh = np.zeros((num_classes, y_train.shape[0]))
+    y_train_oh = np.zeros((y_train.shape[0], num_classes))
     for i, label in enumerate(y_train):
-        y_train_oh[label, i] = 1
-    y_test_oh = np.zeros((num_classes, y_test.shape[0]))
+        y_train_oh[i, label] = 1
+    y_test_oh = np.zeros((y_test.shape[0], num_classes))
     for i, label in enumerate(y_test):
-        y_test_oh[label, i] = 1
+        y_test_oh[i, label] = 1
 
     return x_train, y_train_oh, x_test, y_test_oh
+
+def train_val_split(x, y, val_fraction=0.1):
+    num_samples = x.shape[0]
+    val_size = int(num_samples * val_fraction)
+    indices = np.random.permutation(num_samples)
+    x = x[indices]
+    y = y[indices]
+    x_val = x[:val_size]
+    y_val = y[:val_size]
+    x_train = x[val_size:]
+    y_train = y[val_size:]
+    return (x_train, y_train), (x_val, y_val)
 
 def create_model(args):
     model = Sequential(weight_init=args.weight_init)
@@ -91,3 +103,90 @@ def train_one_epoch(model, optimizer, x_train, y_train, loss_name, batch_size):
     else:
         return total_loss / num_batches
     
+def accuracy(y_pred, y_true):
+    return np.mean(np.argmax(y_pred, axis=0) == np.argmax(y_true, axis=0))
+    
+if __name__ == "__main__":
+    args = parse_args()
+
+    wandb.init(project=args.wandb_project, entity=args.wandb_entity, config=vars(args))
+    config = wandb.config
+
+    args.epochs = config.epochs
+    args.num_layers = config.num_layers
+    args.hidden_size = config.hidden_size
+    args.weight_decay = config.weight_decay
+    args.learning_rate = config.learning_rate
+    args.optimizer = config.optimizer
+    args.batch_size = config.batch_size
+    args.weight_init = config.weight_init
+    args.activation = config.activation
+
+
+    run_name = run_name = (f"ep_{args.epochs}_nl_{args.num_layers}_hs_{args.hidden_size}_wd_{args.weight_decay}_lr_{args.learning_rate}_bs_{args.batch_size}_{args.optimizer}_{args.weight_init}_{args.activation}")
+    wandb.run.name = run_name  
+    wandb.run.save()
+
+    x_train_full, y_train_full, x_test, y_test = load_data(args.dataset)
+    (x_train, y_train), (x_val, y_val) = train_val_split(x_train_full, y_train_full, 0.1)
+
+    model = create_model(args)
+
+    opt_class = OPTIMIZERS[args.optimizer]
+    opt_params = {
+        "lr": args.learning_rate,
+        "momentum": args.momentum,
+        "beta": args.beta,
+        "beta1": args.beta1,
+        "beta2": args.beta2,
+        "epsilon": args.epsilon,
+        "weight_decay": args.weight_decay
+    }
+    optimizer = opt_class(**opt_params)
+
+    loss_func, _ = LOSSES[args.loss]
+
+    num_samples = x_train.shape[0]
+    batch_size = args.batch_size
+    for epoch in range(args.epochs):
+        indices = np.random.permutation(num_samples)
+        x_train = x_train[indices]
+        y_train = y_train[indices]
+
+        total_loss = 0.0
+        total_acc = 0.0
+        n_batches = num_samples // batch_size
+
+        for i in range(n_batches):
+            start = i * batch_size
+            end = start + batch_size
+            x_batch = x_train[start:end]
+            y_batch = y_train[start:end]
+
+            pre_acts, acts = model.forward(x_batch.T)
+            loss_value = loss_func(acts[-1], y_batch.T)
+            total_loss += loss_value
+
+            acc = accuracy(acts[-1], y_batch.T)
+            total_acc += acc
+
+            grads_W, grads_b = model.backward(y_batch.T, pre_acts, acts, args.loss)
+            optimizer.update(model, grads_W, grads_b)
+
+        avg_train_loss = total_loss / n_batches if n_batches else total_loss
+        avg_train_acc = total_acc / n_batches if n_batches else total_acc
+
+        pre_acts_val, acts_val = model.forward(x_val.T)
+        val_loss = loss_func(acts_val[-1], y_val.T)
+        val_acc = accuracy(acts_val[-1], y_val.T)
+
+        wandb.log({
+            "epoch": epoch + 1,
+            "train_loss": avg_train_loss,
+            "train_accuracy": avg_train_acc,
+            "val_loss": val_loss,
+            "val_accuracy": val_acc
+        })
+        print(f"Epoch [{epoch+1}/{args.epochs}] train_loss: {avg_train_loss:.4f}, train_acc: {avg_train_acc:.4f}, val_loss: {val_loss:.4f}, val_acc: {val_acc:.4f}")
+
+    print("Training complete.")

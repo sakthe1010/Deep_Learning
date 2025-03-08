@@ -1,7 +1,7 @@
 import numpy as np
 
 class SGD:
-    def __init__(self, lr=0.01):
+    def __init__(self, lr=0.1, **kwargs):
         self.lr = lr
 
     def update(self, model, grad_W, grad_b):
@@ -10,7 +10,7 @@ class SGD:
             model.biases[i]  -= self.lr * grad_b[i]
 
 class Momentum:
-    def __init__(self, lr=0.01, momentum=0.9):
+    def __init__(self, lr=0.1, momentum=0.5, **kwargs):
         self.lr = lr
         self.momentum = momentum
         self.vel_W = None
@@ -28,7 +28,7 @@ class Momentum:
             model.biases[i]  -= self.vel_b[i]
 
 class Nesterov:
-    def __init__(self, lr=0.01, momentum=0.9):
+    def __init__(self, lr=0.1, momentum=0.5, **kwargs):
         self.lr = lr
         self.momentum = momentum
         self.vel_W = None
@@ -51,9 +51,9 @@ class Nesterov:
             model.biases[i]  += -self.momentum * prev_vel_b + (1 + self.momentum) * self.vel_b[i]
 
 class RMSprop:
-    def __init__(self, lr=0.01, decay=0.9):
+    def __init__(self, lr=0.1, beta=0.5, **kwargs):
         self.lr = lr
-        self.decay = decay
+        self.beta = beta
         self.vel_W = None
         self.vel_b = None
 
@@ -63,13 +63,13 @@ class RMSprop:
             self.vel_b = [np.zeros_like(b) for b in model.biases]
 
         for i in range(len(model.weights)):
-            self.vel_W[i] = self.decay * self.vel_W[i] + (1 - self.decay) * grad_W[i]**2
-            self.vel_b[i] = self.decay * self.vel_b[i] + (1 - self.decay) * grad_b[i]**2
+            self.vel_W[i] = self.beta * self.vel_W[i] + (1 - self.beta) * grad_W[i]**2
+            self.vel_b[i] = self.beta * self.vel_b[i] + (1 - self.beta) * grad_b[i]**2
             model.weights[i] -= self.lr * grad_W[i] / np.sqrt(self.vel_W[i] + 1e-8)
             model.biases[i]  -= self.lr * grad_b[i] / np.sqrt(self.vel_b[i] + 1e-8)
 
 class Adam:
-    def __init__(self, lr=0.01, beta1=0.9, beta2=0.999):
+    def __init__(self, lr=0.1, beta1=0.5, beta2=0.5, **kwargs):
         self.lr = lr
         self.beta1 = beta1
         self.beta2 = beta2
@@ -102,7 +102,7 @@ class Adam:
             model.biases[i]  -= self.lr * fm_hat_b / (np.sqrt(sm_hat_b) + 1e-8)
 
 class Nadam:
-    def __init__(self, lr=0.01, beta1=0.9, beta2=0.999):
+    def __init__(self, lr=0.1, beta1=0.5, beta2=0.5, **kwargs):
         self.lr = lr
         self.beta1 = beta1
         self.beta2 = beta2
