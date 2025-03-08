@@ -92,22 +92,18 @@ class Sequential():
 if __name__ == "__main__":
     
     model = Sequential(weight_init='xavier')
-    model.add(Layer(784, activation='identity'))   # Input layer
-    model.add(Layer(64, activation='relu'))          # Hidden layer
-    model.add(Layer(10, activation='softmax'))       # Output layer
+    model.add(Layer(784, activation='identity'))   
+    model.add(Layer(64, activation='relu'))          
+    model.add(Layer(10, activation='softmax'))       
     model.create_parameters()
 
-    # Create dummy input and one-hot encoded target
     X_dummy = np.random.rand(784, 1)
     y_dummy = np.zeros((10, 1))
-    y_dummy[3] = 1  # Assuming the target class is index 3
+    y_dummy[3] = 1
 
-    # Perform forward pass
     pre_activations, activations = model.forward(X_dummy)
 
-    # Perform backpropagation using cross-entropy loss
     grads_W, grads_b = model.backward(y_dummy, pre_activations, activations, loss_name='cross_entropy')
-
-    # Print shapes of the gradients to verify dimensions match
+    
     for i, (gw, gb) in enumerate(zip(grads_W, grads_b)):
         print(f"Layer {i+1}: grad_W shape: {gw.shape}, grad_b shape: {gb.shape}")
