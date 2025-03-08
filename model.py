@@ -1,21 +1,6 @@
 import numpy as np 
 
-############################################ ACTIVATION FUNCTIONS ############################################
-def relu(x):
-    return np.maximum(0, x)
-
-def sigmoid(x):
-    return 1 / (1 + np.exp(-x))
-
-def tanh(x):
-    return np.tanh(x)
-
-def identity(x):
-    return x
-
-def softmax(x):
-    exp_x = np.exp(x - np.max(x))
-    return exp_x / np.sum(exp_x, axis=0)
+from activations import ACTIVATIONS
 
 ############################################ NEURAL NETWORK MODEL ############################################
 class Layer():
@@ -54,20 +39,41 @@ class Sequential():
             self.biases.append(bias_vector)
 
     def forward(self, x):
+        pre_activations = []
+        activations = [x]
         for i in range(len(self.layers)-1):
-            x = np.dot(self.weights[i], x) + self.biases[i]
+            z = np.dot(self.weights[i], x) + self.biases[i]
+            pre_activations.append(z)
+            activation_func, _ = ACTIVATIONS[self.layers[i+1].activation]
+            a = activation_func(z)
+            activations.append(a)
+            x = a
 
-            if self.layers[i+1].activation == 'relu':
-                x = relu(x)
-            elif self.layers[i+1].activation == 'sigmoid':
-                x = sigmoid(x)
-            elif self.layers[i+1].activation == 'tanh':
-                x = tanh(x)
-            elif self.layers[i+1].activation == 'identity':
-                x = identity(x)
-            elif self.layers[i+1].activation == 'softmax':
-                x = softmax(x)
-        return x
+            activations.append(x)
+        return pre_activations, activations
+    
+    def backward(self, y, pre_activations, activations):
+        grads_W = [None] * len(self.weights)
+        grads_b = [None] * len(self.biases)
+        L = len(self.layers) - 1  # Index of the last layer.
+        
+        aL = activations[-1]
+        if self.layers[-1].activation == 'softmax':
+            delta = aL - y
+        else:
+            _, derivative_func = ACTIVATIONS[self.layers[-1].activation]
+            delta = (aL - y) * derivative_func(pre_activations[-1])
+
+        grads_W[-1] = np.dot(delta, activations[-2].T)
+        grads_b[-1] = np.sum(delta, axis=1, keepdims=True)
+        
+        for l in range(L-1, 0, -1):
+            _, derivative_func = ACTIVATIONS[self.layers[l].activation]
+            delta = np.dot(self.weights[l].T, delta) * derivative_func(pre_activations[l-1])
+            grads_W[l-1] = np.dot(delta, activations[l-1].T)
+            grads_b[l-1] = np.sum(delta, axis=1, keepdims=True)
+        
+        return grads_W, grads_b
 
 ############################################ MAIN FUNCTION ############################################
 
