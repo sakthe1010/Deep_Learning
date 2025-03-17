@@ -28,7 +28,7 @@ def parse_args():
     parser.add_argument('-eps',"--epsilon", type=float, default=1e-6, help="Epsilon used by optimizers.")
     parser.add_argument('-w_d',"--weight_decay", type=float, default=0.0005, help="Weight decay (L2 regularization). Not implemented in all optimizers above.")
     parser.add_argument('-w_i',"--weight_init", type=str, default="xavier",choices=["random", "xavier"], help="Weight initialization method.")
-    parser.add_argument("-nhl", "--num_layers", type=int, default=3, help="Number of hidden layers.")
+    parser.add_argument("-nhl", "--num_layers", type=int, default=4, help="Number of hidden layers.")
     parser.add_argument("-sz", "--hidden_size", type=int, default=128, help="Number of neurons in feedforward layer.")
     parser.add_argument("-a", "--activation", type=str, default="tanh", choices=["identity", "sigmoid", "tanh", "relu"], help="Activation function for hidden layers.")
     return parser.parse_args()
