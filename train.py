@@ -1,6 +1,8 @@
 import argparse
 import numpy as np
 import wandb
+import matplotlib.pyplot as plt
+from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
 
 
 from model import Layer, Sequential
@@ -196,3 +198,19 @@ if __name__ == "__main__":
         print(f"Epoch [{epoch+1}/{args.epochs}] train_loss: {avg_train_loss:.4f}, train_acc: {avg_train_acc:.4f}, val_loss: {val_loss:.4f}, val_acc: {val_acc:.4f}, test_loss: {test_loss:.4f}, test_acc: {test_acc:.4f}")
 
     print("Training complete.")
+
+    pre_acts_test, acts_test = model.forward(x_test.T)
+    y_pred_test = np.argmax(acts_test[-1], axis=0)
+    y_true_test = np.argmax(y_test, axis=1)
+
+    cm = confusion_matrix(y_true_test, y_pred_test)
+    fig, ax = plt.subplots(figsize=(6, 6))
+    disp = ConfusionMatrixDisplay(confusion_matrix=cm,
+                                display_labels=[str(i) for i in range(10)])
+    disp.plot(cmap=plt.cm.Blues, ax=ax)
+    ax.set_title("Confusion Matrix (Test Set)")
+
+    wandb.log({"confusion_matrix": wandb.Image(fig)})
+
+    plt.close(fig)
+
