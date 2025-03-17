@@ -76,3 +76,6 @@ The report includes:
 2. Comparison of loss functions (cross-entropy vs. mean squared error).
 3. Observations and recommendations based on experiments.
 4. Final configurations and test accuracy, along with confusion matrix and misclassified sample analysis.
+
+Github repo link: https://github.com/sakthe1010/da6401_assignment1
+
