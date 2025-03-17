@@ -14,6 +14,7 @@ def mse_loss(y_pred, y_true):
 def mse_derivative(y_pred, y_true):
     return 2 * (y_pred - y_true) / y_true.shape[1]
 
+# Dictionary containing the loss functions and their derivatives
 LOSSES = {
     "cross_entropy": (cross_entropy_loss, cross_entropy_derivative),
     "mean_squared_error": (mse_loss, mse_derivative)

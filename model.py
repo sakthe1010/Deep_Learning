@@ -88,7 +88,7 @@ class Sequential():
         return grads_W, grads_b
 
 ############################################ MAIN FUNCTION ############################################
-
+### Dummy test ###
 if __name__ == "__main__":
     
     model = Sequential(weight_init='xavier')
