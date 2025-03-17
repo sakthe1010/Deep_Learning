@@ -16,21 +16,21 @@ def parse_args():
     parser.add_argument('-wp', "--wandb_project", type=str, default="myprojectname", help="Project name used to track experiments in Weights & Biases dashboard.")
     parser.add_argument('-we',"--wandb_entity", type=str, default="myname", help="W&B Entity used to track experiments in the Weights & Biases dashboard.")
     parser.add_argument('-d',"--dataset", type=str, default="fashion_mnist", choices=["fashion_mnist", "mnist"], help="Which dataset to train on. If not available, fallback to dummy data.")
-    parser.add_argument('-e',"--epochs", type=int, default=1, help="Number of epochs to train.")
-    parser.add_argument('-b',"--batch_size", type=int, default=4, help="Batch size used to train neural network.")
-    parser.add_argument('-l',"--loss", type=str, default="cross_entropy", choices=["mean_squared_error", "cross_entropy"], help="Loss function to use.")
-    parser.add_argument('-o',"--optimizer", type=str, default="sgd", choices=["sgd", "momentum", "nesterov", "rmsprop", "adam", "nadam"], help="Optimizer to use.")
-    parser.add_argument('-lr',"--learning_rate", type=float, default=0.1, help="Learning rate.")
+    parser.add_argument('-e',"--epochs", type=int, default=10, help="Number of epochs to train.")
+    parser.add_argument('-b',"--batch_size", type=int, default=64, help="Batch size used to train neural network.")
+    parser.add_argument('-l',"--loss", type=str, default="mean_squared_error", choices=["mean_squared_error", "cross_entropy"], help="Loss function to use.")
+    parser.add_argument('-o',"--optimizer", type=str, default="rmsprop", choices=["sgd", "momentum", "nesterov", "rmsprop", "adam", "nadam"], help="Optimizer to use.")
+    parser.add_argument('-lr',"--learning_rate", type=float, default=0.001, help="Learning rate.")
     parser.add_argument('-m',"--momentum", type=float, default=0.5, help="Momentum used by momentum and nesterov.")
     parser.add_argument('-beta',"--beta", type=float, default=0.5, help="Beta used by rmsprop optimizer.")
     parser.add_argument('-beta1',"--beta1", type=float, default=0.5, help="Beta1 used by adam and nadam optimizers.")
     parser.add_argument('-beta2',"--beta2", type=float, default=0.5, help="Beta2 used by adam and nadam optimizers.")
     parser.add_argument('-eps',"--epsilon", type=float, default=1e-6, help="Epsilon used by optimizers.")
-    parser.add_argument('-w_d',"--weight_decay", type=float, default=0.0, help="Weight decay (L2 regularization). Not implemented in all optimizers above.")
-    parser.add_argument('-w_i',"--weight_init", type=str, default="random",choices=["random", "xavier"], help="Weight initialization method.")
-    parser.add_argument("-nhl", "--num_layers", type=int, default=1, help="Number of hidden layers.")
-    parser.add_argument("-sz", "--hidden_size", type=int, default=4, help="Number of neurons in feedforward layer.")
-    parser.add_argument("-a", "--activation", type=str, default="sigmoid", choices=["identity", "sigmoid", "tanh", "relu"], help="Activation function for hidden layers.")
+    parser.add_argument('-w_d',"--weight_decay", type=float, default=0.0005, help="Weight decay (L2 regularization). Not implemented in all optimizers above.")
+    parser.add_argument('-w_i',"--weight_init", type=str, default="xavier",choices=["random", "xavier"], help="Weight initialization method.")
+    parser.add_argument("-nhl", "--num_layers", type=int, default=3, help="Number of hidden layers.")
+    parser.add_argument("-sz", "--hidden_size", type=int, default=128, help="Number of neurons in feedforward layer.")
+    parser.add_argument("-a", "--activation", type=str, default="tanh", choices=["identity", "sigmoid", "tanh", "relu"], help="Activation function for hidden layers.")
     return parser.parse_args()
 
 def load_data(dataset_name):
@@ -199,18 +199,36 @@ if __name__ == "__main__":
 
     print("Training complete.")
 
-    pre_acts_test, acts_test = model.forward(x_test.T)
-    y_pred_test = np.argmax(acts_test[-1], axis=0)
-    y_true_test = np.argmax(y_test, axis=1)
+## Normalize confusion matrix and log to WandB
+# Get predictions on the test set
+pre_acts_test, acts_test = model.forward(x_test.T)
+y_pred_test = np.argmax(acts_test[-1], axis=0)
+y_true_test = np.argmax(y_test, axis=1)
 
-    cm = confusion_matrix(y_true_test, y_pred_test)
-    fig, ax = plt.subplots(figsize=(6, 6))
-    disp = ConfusionMatrixDisplay(confusion_matrix=cm,
-                                display_labels=[str(i) for i in range(10)])
-    disp.plot(cmap=plt.cm.Blues, ax=ax)
-    ax.set_title("Confusion Matrix (Test Set)")
+# Compute and normalize confusion matrix
+cm = confusion_matrix(y_true_test, y_pred_test)
+cm_norm = cm.astype(float) / cm.sum(axis=1, keepdims=True)  # per-class normalization
 
-    wandb.log({"confusion_matrix": wandb.Image(fig)})
+# Plot normalized confusion matrix
+fig, ax = plt.subplots(figsize=(6,6))
+disp = ConfusionMatrixDisplay(confusion_matrix=cm_norm,
+                              display_labels=[str(i) for i in range(10)])
+disp.plot(cmap=plt.cm.Blues, ax=ax, values_format='.2f')
+ax.set_title("Normalized Confusion Matrix (Test Set)")
 
-    plt.close(fig)
+# Log the matrix as an image to WandB
+wandb.log({"normalized_confusion_matrix": wandb.Image(fig)})
+plt.close(fig)
 
+# Log 10 misclassified samples to a WandB table
+mis_idx = np.where(y_pred_test != y_true_test)[0]  # indices of misclassified samples
+np.random.shuffle(mis_idx)
+sample_mis_idx = mis_idx[:10]  # pick 10 random misclassifications
+
+misclassified_table = wandb.Table(columns=["Index", "Predicted", "True", "Image"])
+
+for idx in sample_mis_idx:
+    image_data = x_test[idx].reshape(28, 28)
+    misclassified_table.add_data(idx, y_pred_test[idx], y_true_test[idx], wandb.Image(image_data))
+
+wandb.log({"misclassified_samples": misclassified_table})
