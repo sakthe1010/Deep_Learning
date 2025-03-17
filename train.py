@@ -122,8 +122,8 @@ if __name__ == "__main__":
     args.weight_init = config.weight_init
     args.activation = config.activation
 
-
-    run_name = run_name = (f"ep_{args.epochs}_nl_{args.num_layers}_hs_{args.hidden_size}_wd_{args.weight_decay}_lr_{args.learning_rate}_bs_{args.batch_size}_{args.optimizer}_{args.weight_init}_{args.activation}")
+    run_name = (f"ep_{args.epochs}_nl_{args.num_layers}_hs_{args.hidden_size}_wd_{args.weight_decay}_"
+                f"lr_{args.learning_rate}_bs_{args.batch_size}_{args.optimizer}_{args.weight_init}_{args.activation}")
     wandb.run.name = run_name  
     wandb.run.save()
 
@@ -180,13 +180,19 @@ if __name__ == "__main__":
         val_loss = loss_func(acts_val[-1], y_val.T)
         val_acc = accuracy(acts_val[-1], y_val.T)
 
+        pre_acts_test, acts_test = model.forward(x_test.T)
+        test_loss = loss_func(acts_test[-1], y_test.T)
+        test_acc = accuracy(acts_test[-1], y_test.T)
+
         wandb.log({
             "epoch": epoch + 1,
             "train_loss": avg_train_loss,
             "train_accuracy": avg_train_acc,
             "val_loss": val_loss,
-            "val_accuracy": val_acc
+            "val_accuracy": val_acc,
+            "test_loss": test_loss,
+            "test_accuracy": test_acc
         })
-        print(f"Epoch [{epoch+1}/{args.epochs}] train_loss: {avg_train_loss:.4f}, train_acc: {avg_train_acc:.4f}, val_loss: {val_loss:.4f}, val_acc: {val_acc:.4f}")
+        print(f"Epoch [{epoch+1}/{args.epochs}] train_loss: {avg_train_loss:.4f}, train_acc: {avg_train_acc:.4f}, val_loss: {val_loss:.4f}, val_acc: {val_acc:.4f}, test_loss: {test_loss:.4f}, test_acc: {test_acc:.4f}")
 
     print("Training complete.")
